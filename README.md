@@ -1,2 +1,2 @@
-# duit ki
+# duit ku
 html.duit ku
