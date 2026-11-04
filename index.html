@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DuitKu - Scan Resit</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  body{font-family:Arial;background:#0f172a;color:white;padding:20px;max-width:480px;margin:auto}
+  h1{font-size:24px;text-align:center}
+  .card{background:#1e293b;padding:15px;border-radius:15px;margin-bottom:15px}
+  .baki{font-size:32px;color:#4ade80;font-weight:bold}
+  input,button{width:100%;padding:12px;border-radius:10px;border:none;margin-top:8px;font-size:16px;box-sizing:border-box}
+  input{background:#334155;color:white}
+  button{background:#22c55e;color:white;font-weight:bold;cursor:pointer}
+  .scanBtn{background:#0ea5e9}
+  .target-bar{background:#334155;height:20px;border-radius:10px;overflow:hidden;margin-top:10px}
+  .target-fill{background:#22c55e;height:100%;width:0%;transition:0.5s}
+  .item{display:flex;justify-content:space-between;background:#334155;padding:10px;border-radius:10px;margin-top:8px}
+  .cat{font-size:12px;background:#0ea5e9;padding:2px 8px;border-radius:20px}
+  #preview{width:100%;border-radius:10px;margin-top:10px;display:none}
+  #status{font-size:13px;color:#facc15;margin-top:8px}
+</style>
+</head>
+<body>
+
+<h1>💰 DuitKu</h1>
+<p style="text-align:center;opacity:0.7">Urus duit tanpa menulis panjang</p>
+
+<div class="card">
+  <div>Gaji Bulan Ni</div>
+  <input id="gaji" type="number" placeholder="Contoh: 1500">
+  <div style="margin-top:10px">Target Tabung</div>
+  <input id="target" type="number" placeholder="Contoh: 500 untuk Raya">
+  <button onclick="setGaji()">Simpan Gaji & Target</button>
+</div>
+
+<div class="card">
+  <div>Baki Tinggal</div>
+  <div class="baki" id="baki">$0.00</div>
+  <div id="info">Belum set gaji lagi</div>
+  <div class="target-bar"><div class="target-fill" id="bar"></div></div>
+  <div id="targetText" style="font-size:13px;margin-top:5px">Target: $0</div>
+</div>
+
+<div class="card">
+  <div>📸 Scan Resit</div>
+  <p style="font-size:13px;opacity:0.7">Ambil gambar resit, apps akan baca total sendiri.</p>
+  <input type="file" id="resitInput" accept="image/*" capture="environment" style="display:none" onchange="scanResit(event)">
+  <button class="scanBtn" onclick="document.getElementById('resitInput').click()">📸 Scan Resit Sekarang</button>
+  <img id="preview">
+  <div id="status"></div>
+  <div id="hasilScan" style="font-size:13px;margin-top:8px;white-space:pre-wrap;background:#0f172a;padding:10px;border-radius:10px;display:none"></div>
+</div>
+
+<div class="card">
+  <div>Taip Manual (kalau inda ada resit)</div>
+  <input id="inputBelanja" placeholder="Contoh: makan 5 / minyak 20">
+  <button onclick="tambahManual()">+ Tambah Belanja</button>
+</div>
+
+<div class="card">
+  <div>Senarai Belanja</div>
+  <div id="list"></div>
+</div>
+
+<script>
+let gaji = 0, target = 0, totalBelanja = 0;
+let listEl = document.getElementById('list');
+
+function setGaji(){
+  gaji = parseFloat(document.getElementById('gaji').value) || 0;
+  target = parseFloat(document.getElementById('target').value) || 0;
+  update();
+}
+function kategoriDari(text){
+  text = text.toLowerCase();
+  if(text.includes('makan')||text.includes('nasi')||text.includes('katok')||text.includes('kopi')||text.includes('supermarket')||text.includes('huaho')||text.includes('skh')) return '🍔 Makan / Barang';
+  if(text.includes('minyak')||text.includes('shell')||text.includes('kereta')) return '🚗 Transport';
+  if(text.includes('shopee')||text.includes('baju')) return '🛍️ Shopping';
+  return '💸 Lain-lain';
+}
+function tambahKeList(nama, jumlah, kat){
+  totalBelanja += jumlah;
+  let div = document.createElement('div');
+  div.className = 'item';
+  div.innerHTML = `<span>${nama}<br><span class="cat">${kat}</span></span><b>-$${jumlah.toFixed(2)}</b>`;
+  listEl.prepend(div);
+  update();
+}
+function tambahManual(){
+  let raw = document.getElementById('inputBelanja').value;
+  if(!raw) return alert('Taip dulu contoh: makan 5');
+  let match = raw.match(/(\d+(\.\d+)?)/);
+  if(!match) return alert('Letak jumlah, contoh: makan 5');
+  let jumlah = parseFloat(match[0]);
+  let nama = raw.replace(match[0],'').trim() || 'Belanja';
+  tambahKeList(nama, jumlah, kategoriDari(raw));
+  document.getElementById('inputBelanja').value = '';
+}
+function update(){
+  let baki = gaji - totalBelanja;
+  document.getElementById('baki').textContent = '$' + baki.toFixed(2);
+  document.getElementById('info').textContent = `Gaji $${gaji} - Belanja $${totalBelanja.toFixed(2)}`;
+  document.getElementById('targetText').textContent = `Target Tabung: $${target}`;
+  let peratus = target > 0 ? Math.min(100, (baki/target)*100) : 0;
+  document.getElementById('bar').style.width = peratus + '%';
+}
+
+async function scanResit(event){
+  let file = event.target.files[0];
+  if(!file) return;
+  let preview = document.getElementById('preview');
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  document.getElementById('status').textContent = '⏳ Sedang baca resit... tunggu 5-10 saat...';
+  document.getElementById('hasilScan').style.display = 'none';
+
+  try{
+    let result = await Tesseract.recognize(file, 'eng');
+    let text = result.data.text;
+    document.getElementById('hasilScan').style.display = 'block';
+    document.getElementById('hasilScan').textContent = 'Yang dibaca:\n' + text;
+
+    // Cari semua nombor macam 12.50, 5.00, $20
+    let numbers = text.match(/\d+\.\d{2}|\d+\.\d{1}|\$?\s?\d+/g);
+    let amounts = [];
+    if(numbers){
+      numbers.forEach(n=>{
+        let v = parseFloat(n.replace('$','').replace(',',''));
+        if(v>0 && v<10000) amounts.push(v);
+      });
+    }
+    // Ambil yang paling besar - biasanya TOTAL
+    amounts.sort((a,b)=>b-a);
+    let total = amounts[0] || 0;
+
+    if(total>0){
+      document.getElementById('status').textContent = `✅ Jumpa Total: $${total} - Sudah dimasukkan!`;
+      // Tebak nama kedai dari baris pertama
+      let kedai = text.split('\n')[0] || 'Resit';
+      tambahKeList('Resit: ' + kedai, total, kategoriDari(text));
+    } else {
+      document.getElementById('status').textContent = '❌ Indah dapat baca jumlah. Cuba gambar lebih terang.';
+    }
+  } catch(e){
+    document.getElementById('status').textContent = '❌ Error baca resit. Cuba lagi.';
+  }
+}
+</script>
+</body>
+</html>
