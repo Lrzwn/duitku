@@ -65,12 +65,16 @@
 </div>
 
 <script>
-let gaji = 0, target = 0, totalBelanja = 0;
+let gaji = Number(localStorage.getItem('duitku_gaji')) || 0;
+let target = Number(localStorage.getItem('duitku_target')) || 0;
+let totalBelanja = Number(localStorage.getItem('duitku_total')) || 0;
 let listEl = document.getElementById('list');
 
 function setGaji(){
   gaji = parseFloat(document.getElementById('gaji').value) || 0;
   target = parseFloat(document.getElementById('target').value) || 0;
+  localStorage.setItem('duitku_gaji', gaji);
+  localStorage.setItem('duitku_target', target);
   update();
 }
 function kategoriDari(text){
@@ -100,6 +104,8 @@ function tambahManual(){
 }
 function update(){
   let baki = gaji - totalBelanja;
+    localStorage.setItem('duitku_total', totalBelanja);
+  localStorage.setItem('duitku_list', listEl.innerHTML);
   document.getElementById('baki').textContent = '$' + baki.toFixed(2);
   document.getElementById('info').textContent = `Gaji $${gaji} - Belanja $${totalBelanja.toFixed(2)}`;
   document.getElementById('targetText').textContent = `Target Tabung: $${target}`;
@@ -147,6 +153,12 @@ async function scanResit(event){
     document.getElementById('status').textContent = '❌ Error baca resit. Cuba lagi.';
   }
 }
+  // Load balik bila buka apps
+  document.getElementById('gaji').value = gaji ? gaji : '';
+ document.getElementById('target').value = target ? target : '';
+  let savedList = localStorage.getItem('duitku_list');
+  if(savedList) listEl.innerHTML = savedList;
+  update();
 </script>
 </body>
 <https://lrzwn.duitku.com</html>
