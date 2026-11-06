@@ -90,6 +90,8 @@ function tambahKeList(nama, jumlah, kat){
   div.className = 'item';
   div.innerHTML = `<span>${nama}<br><span class="cat">${kat}</span></span><b>-$${jumlah.toFixed(2)}</b>`;
   listEl.prepend(div);
+  localStorage.setItem('duitku_list',listel.innerHTML);
+  localStorage.setItem('duitku_total',totalBelanja);
   update();
 }
 function tambahManual(){
