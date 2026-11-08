@@ -123,8 +123,9 @@ function hitungBaki(){
   let gaji = gajiData.gaji || 0;
   let keperluanTotal = 0;
   gajiData.list.forEach(k=> keperluanTotal+=k.jumlah);
-  let baki = gaji - keperluanTotal + masuk - keluar;
-  return {masuk, keluar, gaji, keperluanTotal, baki};
+  let tabung = goal ? (goal.saved || 0) : 0;
+  let baki = gaji - keperluanTotal + masuk - keluar - tabung;
+  return {masuk, keluar, gaji, keperluanTotal, tabung, baki};
 }
 function render(){
   let h = hitungBaki();
