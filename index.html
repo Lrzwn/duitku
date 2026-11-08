@@ -14,8 +14,6 @@
   .card{background:#FAF8F1;border:1px solid #E2DDD0;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,0.04)}
   .baki-label{font-size:13px;color:#7A8A77}
   .baki{font-size:38px;font-weight:800;margin:4px 0;color:#2F3E2E}
-  .baki.neg{color:#B0553A}
-  .baki-detail{font-size:12px;color:#7A8A77;line-height:1.6;background:#EAF0E6;border-radius:10px;padding:8px 10px;margin-top:6px}
   .row{display:flex;gap:10px}
   .mini{flex:1;background:#EAF0E6;border-radius:14px;padding:12px;text-align:center}
   .mini span{font-size:12px;color:#7A8A77}
@@ -58,16 +56,14 @@
 </div>
 
 <div class="card">
-  <div class="baki-label">Baki Sekarang = Baki Gaji</div>
+  <div class="baki-label">Baki Sekarang</div>
   <div class="baki" id="baki">$0.00</div>
-  <div class="baki-detail" id="bakiDetail">Belum ada apa-apa</div>
-  <div class="row" style="margin-top:10px">
-    <div class="mini"><span>Total Masuk</span><b class="in" id="totalIn">+$0</b></div>
-    <div class="mini"><span>Total Keluar</span><b class="out" id="totalOut">-$0</b></div>
+  <div class="row">
+    <div class="mini"><span>Masuk</span><b class="in" id="totalIn">+$0</b></div>
+    <div class="mini"><span>Keluar</span><b class="out" id="totalOut">-$0</b></div>
   </div>
 </div>
 
-<!-- GAJI & TOLAK BELANJA KEPERLUAN - KOTAK ASAL, NOMBOR SAJA SYNC -->
 <div class="card">
   <h3>💼 Gaji & Tolak Belanja Keperluan</h3>
   <input id="gajiInput" type="number" placeholder="Gaji sebulan - cth: 800">
@@ -94,7 +90,6 @@
   <div class="goal-text"><span id="goalLabel">Belum ada tabung</span><span id="goalPct">0%</span></div>
   <br>
   <button class="btn-in" onclick="saveGoal()" style="width:100%">Simpan Tabung</button>
-  <p style="font-size:12px;color:#7A8A77;margin:8px 0 0">* Duit Tabung akan ditolak dari Baki Sekarang & Baki Gaji, sebab duit tu sudah disimpan.</p>
 </div>
 
 <div class="card">
@@ -117,32 +112,25 @@
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem('duitku') || '[]');
-let goal = JSON.parse(localStorage.getItem('duitku_goal') || 'null');
-let gajiData = JSON.parse(localStorage.getItem('duitku_gaji') || '{"gaji":0,"list":[]}');
-function simpan(){ localStorage.setItem('duitku', JSON.stringify(data)); }
-function simpanGaji(){ localStorage.setItem('duitku_gaji', JSON.stringify(gajiData)); }
-// SATU KIRAAN UNTUK DUA-DUA BAKI
+let data = JSON.parse(localStorage.getItem('duitku_v2') || '[]');
+let goal = JSON.parse(localStorage.getItem('duitku_goal_v2') || 'null');
+let gajiData = JSON.parse(localStorage.getItem('duitku_gaji_v2') || '{"gaji":0,"list":[]}');
+function simpan(){ localStorage.setItem('duitku_v2', JSON.stringify(data)); }
+function simpanGaji(){ localStorage.setItem('duitku_gaji_v2', JSON.stringify(gajiData)); }
 function hitungBaki(){
   let masuk=0, keluar=0;
   data.forEach(d=>{ if(d.jenis==='in') masuk+=d.jumlah; else keluar+=d.jumlah; });
   let gaji = gajiData.gaji || 0;
   let keperluanTotal = 0;
   gajiData.list.forEach(k=> keperluanTotal+=k.jumlah);
-  let tabung = goal ? (goal.saved || 0) : 0;
-  let baki = gaji - keperluanTotal + masuk - keluar - tabung;
-  return {masuk, keluar, gaji, keperluanTotal, tabung, baki};
+  let baki = gaji - keperluanTotal + masuk - keluar;
+  return {masuk, keluar, gaji, keperluanTotal, baki};
 }
 function render(){
   let h = hitungBaki();
-  // BAKI SEKARANG
-  let bakiEl = document.getElementById('baki');
-  bakiEl.textContent = '$' + h.baki.toFixed(2);
-  bakiEl.className = 'baki' + (h.baki < 0 ? ' neg' : '');
-  document.getElementById('totalIn').textContent = '+$' + (h.gaji + h.masuk).toFixed(2);
-  document.getElementById('totalOut').textContent = '-$' + (h.keluar + h.keperluanTotal + h.tabung).toFixed(2);
-  document.getElementById('bakiDetail').innerHTML = 'Gaji $' + h.gaji.toFixed(2) + ' - Keperluan $' + h.keperluanTotal.toFixed(2) + ' + Masuk $' + h.masuk.toFixed(2) + ' - Keluar $' + h.keluar.toFixed(2) + ' - Tabung $' + h.tabung.toFixed(2) + ' = <b>$' + h.baki.toFixed(2) + '</b>';
-  // BAKI GAJI - PAKAI NOMBOR YANG SAMA SAJA
+  document.getElementById('baki').textContent = '$' + h.baki.toFixed(2);
+  document.getElementById('totalIn').textContent = '+$' + h.masuk.toFixed(2);
+  document.getElementById('totalOut').textContent = '-$' + h.keluar.toFixed(2);
   document.getElementById('bakiGaji').textContent = '$' + h.baki.toFixed(2);
   document.getElementById('gajiDetail').textContent = '$' + h.gaji.toFixed(2) + ' - $' + h.keperluanTotal.toFixed(2) + ' keperluan';
   let list = document.getElementById('list');
@@ -170,7 +158,7 @@ function saveGoal(){
   let s=parseFloat(document.getElementById('goalSaved').value)||0;
   if(!n||!t){ alert('Isi nama tabung & target dulu'); return; }
   goal={name:n,target:t,saved:s};
-  localStorage.setItem('duitku_goal', JSON.stringify(goal));
+  localStorage.setItem('duitku_goal_v2', JSON.stringify(goal));
   render();
 }
 function renderGoal(){
