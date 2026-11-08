@@ -58,7 +58,7 @@
 </div>
 
 <div class="card">
-  <div class="baki-label">Baki Sekarang - Semua Sudah Kira</div>
+  <div class="baki-label">Baki Sekarang = Baki Gaji</div>
   <div class="baki" id="baki">$0.00</div>
   <div class="baki-detail" id="bakiDetail">Belum ada apa-apa</div>
   <div class="row" style="margin-top:10px">
@@ -67,7 +67,7 @@
   </div>
 </div>
 
-<!-- GAJI & TOLAK BELANJA KEPERLUAN -->
+<!-- GAJI & TOLAK BELANJA KEPERLUAN - KOTAK ASAL, NOMBOR SAJA SYNC -->
 <div class="card">
   <h3>💼 Gaji & Tolak Belanja Keperluan</h3>
   <input id="gajiInput" type="number" placeholder="Gaji sebulan - cth: 800">
@@ -94,7 +94,7 @@
   <div class="goal-text"><span id="goalLabel">Belum ada tabung</span><span id="goalPct">0%</span></div>
   <br>
   <button class="btn-in" onclick="saveGoal()" style="width:100%">Simpan Tabung</button>
-  <p style="font-size:12px;color:#7A8A77;margin:8px 0 0">* Duit Tabung akan ditolak dari Baki Sekarang, sebab duit tu sudah disimpan / dikunci.</p>
+  <p style="font-size:12px;color:#7A8A77;margin:8px 0 0">* Duit Tabung akan ditolak dari Baki Sekarang & Baki Gaji, sebab duit tu sudah disimpan.</p>
 </div>
 
 <div class="card">
@@ -122,21 +122,29 @@ let goal = JSON.parse(localStorage.getItem('duitku_goal') || 'null');
 let gajiData = JSON.parse(localStorage.getItem('duitku_gaji') || '{"gaji":0,"list":[]}');
 function simpan(){ localStorage.setItem('duitku', JSON.stringify(data)); }
 function simpanGaji(){ localStorage.setItem('duitku_gaji', JSON.stringify(gajiData)); }
-function render(){
+// SATU KIRAAN UNTUK DUA-DUA BAKI
+function hitungBaki(){
   let masuk=0, keluar=0;
   data.forEach(d=>{ if(d.jenis==='in') masuk+=d.jumlah; else keluar+=d.jumlah; });
   let gaji = gajiData.gaji || 0;
   let keperluanTotal = 0;
   gajiData.list.forEach(k=> keperluanTotal+=k.jumlah);
   let tabung = goal ? (goal.saved || 0) : 0;
-  // BAKI SELARI - SEMUA DIKIRA
-  let baki = gaji + masuk - keluar - keperluanTotal - tabung;
+  let baki = gaji - keperluanTotal + masuk - keluar - tabung;
+  return {masuk, keluar, gaji, keperluanTotal, tabung, baki};
+}
+function render(){
+  let h = hitungBaki();
+  // BAKI SEKARANG
   let bakiEl = document.getElementById('baki');
-  bakiEl.textContent = '$' + baki.toFixed(2);
-  bakiEl.className = 'baki' + (baki < 0 ? ' neg' : '');
-  document.getElementById('totalIn').textContent = '+$' + (gaji + masuk).toFixed(2);
-  document.getElementById('totalOut').textContent = '-$' + (keluar + keperluanTotal + tabung).toFixed(2);
-  document.getElementById('bakiDetail').innerHTML = 'Gaji $' + gaji.toFixed(2) + ' + Masuk $' + masuk.toFixed(2) + ' - Keluar $' + keluar.toFixed(2) + ' - Keperluan $' + keperluanTotal.toFixed(2) + ' - Tabung $' + tabung.toFixed(2) + ' = <b>$' + baki.toFixed(2) + '</b>';
+  bakiEl.textContent = '$' + h.baki.toFixed(2);
+  bakiEl.className = 'baki' + (h.baki < 0 ? ' neg' : '');
+  document.getElementById('totalIn').textContent = '+$' + (h.gaji + h.masuk).toFixed(2);
+  document.getElementById('totalOut').textContent = '-$' + (h.keluar + h.keperluanTotal + h.tabung).toFixed(2);
+  document.getElementById('bakiDetail').innerHTML = 'Gaji $' + h.gaji.toFixed(2) + ' - Keperluan $' + h.keperluanTotal.toFixed(2) + ' + Masuk $' + h.masuk.toFixed(2) + ' - Keluar $' + h.keluar.toFixed(2) + ' - Tabung $' + h.tabung.toFixed(2) + ' = <b>$' + h.baki.toFixed(2) + '</b>';
+  // BAKI GAJI - PAKAI NOMBOR YANG SAMA SAJA
+  document.getElementById('bakiGaji').textContent = '$' + h.baki.toFixed(2);
+  document.getElementById('gajiDetail').textContent = '$' + h.gaji.toFixed(2) + ' - $' + h.keperluanTotal.toFixed(2) + ' keperluan';
   let list = document.getElementById('list');
   if(data.length===0){ list.innerHTML='<div class="empty">Belum ada apa-apa.<br>Tambah dulu di atas 🌱</div>'; }
   else{
@@ -145,7 +153,7 @@ function render(){
       return `<div class="item"><div><b>${d.nama}</b><br><small>${d.tarikh}</small></div><div style="text-align:right"><b class="${d.jenis==='in'?'in':'out'}">${d.jenis==='in'?'+':'-'}$${d.jumlah.toFixed(2)}</b> <button class="del" onclick="padam(${idx})">×</button></div></div>`;
     }).join('');
   }
-  renderGoal(); renderGaji();
+  renderGoal(); renderGajiList();
 }
 function tambah(j){
   let nama=document.getElementById('nama').value.trim();
@@ -191,13 +199,8 @@ function tambahKeperluan(){
 }
 function padamKeperluan(i){ gajiData.list.splice(i,1); simpanGaji(); render(); }
 function resetGaji(){ if(confirm('Reset gaji & keperluan?')){ gajiData={gaji:0,list:[]}; simpanGaji(); render(); document.getElementById('gajiInput').value=''; } }
-function renderGaji(){
+function renderGajiList(){
   document.getElementById('gajiInput').value = gajiData.gaji || '';
-  let total = 0;
-  gajiData.list.forEach(k=> total+=k.jumlah);
-  let baki = gajiData.gaji - total;
-  document.getElementById('bakiGaji').textContent = '$' + baki.toFixed(2);
-  document.getElementById('gajiDetail').textContent = '$' + gajiData.gaji.toFixed(2) + ' - $' + total.toFixed(2) + ' keperluan';
   let el = document.getElementById('keperluanList');
   if(gajiData.list.length===0){ el.innerHTML='<div class="empty" style="padding:10px 0">Belum ada belanja keperluan</div>'; }
   else{
