@@ -26,6 +26,7 @@
   button{flex:1;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer}
   .btn-in{background:#7A9A7E;color:white}
   .btn-out{background:#D9B89A;color:#4A3226}
+  .btn-gaji{background:#2F3E2E;color:white;width:100%}
   .goal-bar{height:14px;background:#E6E1D1;border-radius:99px;overflow:hidden;margin:8px 0}
   .goal-fill{height:100%;background:#7A9A7E;width:0%;transition:0.4s}
   .goal-text{font-size:13px;color:#7A8A77;display:flex;justify-content:space-between}
@@ -35,12 +36,14 @@
   .item small{color:#8A9586;font-size:12px}
   .del{background:none;color:#B07A5A;font-size:18px;padding:0;width:30px}
   .empty{text-align:center;color:#9AA692;padding:20px 0;font-size:14px}
+  .gaji-box{background:#2F3E2E;color:white;border-radius:16px;padding:14px;margin-top:10px;text-align:center}
+  .gaji-box span{font-size:12px;opacity:.8}
+  .gaji-box b{font-size:24px;display:block;margin-top:2px}
 </style>
 </head>
 <body>
 
 <div class="top">
-  <!-- LOGO DUITKU - SUDAH LEKAT DALAM FILE, NDA PAYAH SAVE GAMBAR -->
   <svg class="top-logo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7A9A7E"/><stop offset="1" stop-color="#4A6B4F"/></linearGradient></defs>
     <rect width="120" height="120" rx="26" fill="url(#g)"/>
@@ -59,6 +62,24 @@
   <div class="row">
     <div class="mini"><span>Masuk</span><b class="in" id="totalIn">+$0</b></div>
     <div class="mini"><span>Keluar</span><b class="out" id="totalOut">-$0</b></div>
+  </div>
+</div>
+
+<!-- BARU: GAJI & TOLAK BELANJA KEPERLUAN -->
+<div class="card">
+  <h3>💼 Gaji & Tolak Belanja Keperluan</h3>
+  <input id="gajiInput" type="number" placeholder="Gaji sebulan - cth: 800">
+  <input id="keperluanNama" placeholder="Keperluan apa? cth: Sewa, Makan, Minyak">
+  <input id="keperluanJumlah" type="number" placeholder="Jumlah $ - cth: 200">
+  <div class="btn-row">
+    <button class="btn-in" onclick="tambahKeperluan()">+ Tambah Keperluan</button>
+    <button class="btn-out" onclick="resetGaji()">Reset</button>
+  </div>
+  <div id="keperluanList"></div>
+  <div class="gaji-box">
+    <span>Gaji - Belanja Keperluan = Baki Gaji</span>
+    <b id="bakiGaji">$0.00</b>
+    <span id="gajiDetail">Belum isi gaji</span>
   </div>
 </div>
 
@@ -95,7 +116,11 @@
 <script>
 let data = JSON.parse(localStorage.getItem('duitku') || '[]');
 let goal = JSON.parse(localStorage.getItem('duitku_goal') || 'null');
+let gajiData = JSON.parse(localStorage.getItem('duitku_gaji') || '{"gaji":0,"list":[]}');
+
 function simpan(){ localStorage.setItem('duitku', JSON.stringify(data)); }
+function simpanGaji(){ localStorage.setItem('duitku_gaji', JSON.stringify(gajiData)); }
+
 function render(){
   let masuk=0, keluar=0;
   data.forEach(d=>{ if(d.jenis==='in') masuk+=d.jumlah; else keluar+=d.jumlah; });
@@ -111,6 +136,7 @@ function render(){
     }).join('');
   }
   renderGoal();
+  renderGaji();
 }
 function tambah(j){
   let nama=document.getElementById('nama').value.trim();
@@ -139,6 +165,38 @@ function renderGoal(){
   document.getElementById('goalFill').style.width=pct+'%';
   document.getElementById('goalLabel').textContent=goal.name+' - $'+goal.saved+' / $'+goal.target;
   document.getElementById('goalPct').textContent=pct+'%';
+}
+
+// GAJI & KEPERLUAN
+function tambahKeperluan(){
+  let gaji = parseFloat(document.getElementById('gajiInput').value);
+  let nama = document.getElementById('keperluanNama').value.trim();
+  let jumlah = parseFloat(document.getElementById('keperluanJumlah').value);
+  if(!isNaN(gaji) && gaji>0) gajiData.gaji = gaji;
+  if(!nama || !jumlah){ 
+    if(isNaN(gaji) || gaji<=0){ alert('Isi gaji dulu'); return; }
+    // kalau cuma update gaji saja
+    simpanGaji(); renderGaji(); return;
+  }
+  gajiData.list.push({nama, jumlah});
+  simpanGaji(); renderGaji();
+  document.getElementById('keperluanNama').value='';
+  document.getElementById('keperluanJumlah').value='';
+}
+function padamKeperluan(i){ gajiData.list.splice(i,1); simpanGaji(); renderGaji(); }
+function resetGaji(){ if(confirm('Reset gaji & keperluan?')){ gajiData={gaji:0,list:[]}; simpanGaji(); renderGaji(); document.getElementById('gajiInput').value=''; } }
+function renderGaji(){
+  document.getElementById('gajiInput').value = gajiData.gaji || '';
+  let total = 0;
+  gajiData.list.forEach(k=> total+=k.jumlah);
+  let baki = gajiData.gaji - total;
+  document.getElementById('bakiGaji').textContent = '$' + baki.toFixed(2);
+  document.getElementById('gajiDetail').textContent = '$' + gajiData.gaji.toFixed(2) + ' - $' + total.toFixed(2) + ' keperluan';
+  let el = document.getElementById('keperluanList');
+  if(gajiData.list.length===0){ el.innerHTML='<div class="empty" style="padding:10px 0">Belum ada belanja keperluan</div>'; }
+  else{
+    el.innerHTML = gajiData.list.map((k,i)=>`<div class="item"><div><b>${k.nama}</b></div><div><b class="out">-$${k.jumlah.toFixed(2)}</b> <button class="del" onclick="padamKeperluan(${i})">×</button></div></div>`).join('');
+  }
 }
 render();
 </script>
