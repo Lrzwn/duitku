@@ -14,6 +14,8 @@
   .card{background:#FAF8F1;border:1px solid #E2DDD0;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,0.04)}
   .baki-label{font-size:13px;color:#7A8A77}
   .baki{font-size:38px;font-weight:800;margin:4px 0;color:#2F3E2E}
+  .baki.neg{color:#B0553A}
+  .baki-detail{font-size:12px;color:#7A8A77;line-height:1.6;background:#EAF0E6;border-radius:10px;padding:8px 10px;margin-top:6px}
   .row{display:flex;gap:10px}
   .mini{flex:1;background:#EAF0E6;border-radius:14px;padding:12px;text-align:center}
   .mini span{font-size:12px;color:#7A8A77}
@@ -56,11 +58,12 @@
 </div>
 
 <div class="card">
-  <div class="baki-label">Baki Sekarang</div>
+  <div class="baki-label">Baki Sekarang - Semua Sudah Kira</div>
   <div class="baki" id="baki">$0.00</div>
-  <div class="row">
-    <div class="mini"><span>Masuk</span><b class="in" id="totalIn">+$0</b></div>
-    <div class="mini"><span>Keluar</span><b class="out" id="totalOut">-$0</b></div>
+  <div class="baki-detail" id="bakiDetail">Belum ada apa-apa</div>
+  <div class="row" style="margin-top:10px">
+    <div class="mini"><span>Total Masuk</span><b class="in" id="totalIn">+$0</b></div>
+    <div class="mini"><span>Total Keluar</span><b class="out" id="totalOut">-$0</b></div>
   </div>
 </div>
 
@@ -91,6 +94,7 @@
   <div class="goal-text"><span id="goalLabel">Belum ada tabung</span><span id="goalPct">0%</span></div>
   <br>
   <button class="btn-in" onclick="saveGoal()" style="width:100%">Simpan Tabung</button>
+  <p style="font-size:12px;color:#7A8A77;margin:8px 0 0">* Duit Tabung akan ditolak dari Baki Sekarang, sebab duit tu sudah disimpan / dikunci.</p>
 </div>
 
 <div class="card">
@@ -121,9 +125,18 @@ function simpanGaji(){ localStorage.setItem('duitku_gaji', JSON.stringify(gajiDa
 function render(){
   let masuk=0, keluar=0;
   data.forEach(d=>{ if(d.jenis==='in') masuk+=d.jumlah; else keluar+=d.jumlah; });
-  document.getElementById('baki').textContent = '$' + (masuk-keluar).toFixed(2);
-  document.getElementById('totalIn').textContent = '+$' + masuk.toFixed(2);
-  document.getElementById('totalOut').textContent = '-$' + keluar.toFixed(2);
+  let gaji = gajiData.gaji || 0;
+  let keperluanTotal = 0;
+  gajiData.list.forEach(k=> keperluanTotal+=k.jumlah);
+  let tabung = goal ? (goal.saved || 0) : 0;
+  // BAKI SELARI - SEMUA DIKIRA
+  let baki = gaji + masuk - keluar - keperluanTotal - tabung;
+  let bakiEl = document.getElementById('baki');
+  bakiEl.textContent = '$' + baki.toFixed(2);
+  bakiEl.className = 'baki' + (baki < 0 ? ' neg' : '');
+  document.getElementById('totalIn').textContent = '+$' + (gaji + masuk).toFixed(2);
+  document.getElementById('totalOut').textContent = '-$' + (keluar + keperluanTotal + tabung).toFixed(2);
+  document.getElementById('bakiDetail').innerHTML = 'Gaji $' + gaji.toFixed(2) + ' + Masuk $' + masuk.toFixed(2) + ' - Keluar $' + keluar.toFixed(2) + ' - Keperluan $' + keperluanTotal.toFixed(2) + ' - Tabung $' + tabung.toFixed(2) + ' = <b>$' + baki.toFixed(2) + '</b>';
   let list = document.getElementById('list');
   if(data.length===0){ list.innerHTML='<div class="empty">Belum ada apa-apa.<br>Tambah dulu di atas 🌱</div>'; }
   else{
@@ -150,7 +163,7 @@ function saveGoal(){
   if(!n||!t){ alert('Isi nama tabung & target dulu'); return; }
   goal={name:n,target:t,saved:s};
   localStorage.setItem('duitku_goal', JSON.stringify(goal));
-  renderGoal();
+  render();
 }
 function renderGoal(){
   if(!goal) return;
@@ -169,15 +182,15 @@ function tambahKeperluan(){
   if(!isNaN(gaji) && gaji>0) gajiData.gaji = gaji;
   if(!nama || !jumlah){
     if(isNaN(gaji) || gaji<=0){ alert('Isi gaji dulu'); return; }
-    simpanGaji(); renderGaji(); return;
+    simpanGaji(); render(); return;
   }
   gajiData.list.push({nama, jumlah});
-  simpanGaji(); renderGaji();
+  simpanGaji(); render();
   document.getElementById('keperluanNama').value='';
   document.getElementById('keperluanJumlah').value='';
 }
-function padamKeperluan(i){ gajiData.list.splice(i,1); simpanGaji(); renderGaji(); }
-function resetGaji(){ if(confirm('Reset gaji & keperluan?')){ gajiData={gaji:0,list:[]}; simpanGaji(); renderGaji(); document.getElementById('gajiInput').value=''; } }
+function padamKeperluan(i){ gajiData.list.splice(i,1); simpanGaji(); render(); }
+function resetGaji(){ if(confirm('Reset gaji & keperluan?')){ gajiData={gaji:0,list:[]}; simpanGaji(); render(); document.getElementById('gajiInput').value=''; } }
 function renderGaji(){
   document.getElementById('gajiInput').value = gajiData.gaji || '';
   let total = 0;
